@@ -58,19 +58,23 @@ package KubeBuilder::TypeInferer;
       } elsif ($schema->can('type') and $schema->type eq 'object') {
         if (defined $schema->additionalProperties) {
           # the existence of additionalProperties indicates that it's a "map" object (a HashRef in Perl terms) whose keys are strings, and values of a type described in additionalProperties
-          if (defined $schema->additionalProperties->ref) {
-            my $inner = $self->root_schema->resolve_path($schema->additionalProperties->ref)->object;
-            return "HashRef[$inner]";
+          my $props = $schema->additionalProperties;
+          if (defined $props->ref) {
+            $props = $self->root_schema->resolve_path($props->ref)->object;
           }
-          return 'HashRef[Str]' if ($schema->additionalProperties->type eq 'string');
-          return 'HashRef[Num]' if ($schema->additionalProperties->type eq 'number');
-          return 'HashRef[HashRef]' if ($schema->additionalProperties->type eq 'object');
-          if ($schema->additionalProperties->type eq 'array') {
-            my $items = $schema->additionalProperties->items;
-            return 'HashRef[ArrayRef[Str]]' if ($items->type eq 'string');
-            return 'HashRef[ArrayRef[ArrayRef[HashRef]]]' if ($items->type eq 'array' and $items->items->type eq 'object');
-          } 
-          die "Unknown HashRef type " . $schema->additionalProperties->type;
+          if (defined $props->type) {
+            return 'HashRef[Str]' if ($props->type eq 'string');
+            return 'HashRef[Num]' if ($props->type eq 'number');
+            return 'HashRef[HashRef]' if ($props->type eq 'object');
+            if ($props->type eq 'array') {
+              my $items = $props->items;
+              return 'HashRef[ArrayRef[Str]]' if ($items->type eq 'string');
+              return 'HashRef[ArrayRef[ArrayRef[HashRef]]]' if ($items->type eq 'array' and $items->items->type eq 'object');
+            }
+          } elsif (defined $props->ref) {
+            return "HashRef" if ($props->ref eq '#/definitions/io.k8s.apiextensions-apiserver.pkg.apis.apiextensions.v1beta1.JSONSchemaProps');
+            die "Unknown HashRef type " . Dumper({ %$self, root_schema => undef }, "$self");
+          }
         } elsif (defined $schema->properties) {
           # If it has properties in it's schema element, it has to have a proper name
           $self->fully_namespaced;
