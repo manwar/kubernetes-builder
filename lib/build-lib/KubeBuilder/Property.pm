@@ -11,10 +11,14 @@ package KubeBuilder::Property;
   has resolved_schema => (is => 'ro', lazy => 1, default => sub {
     my $self = shift;
     if (defined $self->original_schema->ref) {
-      return $self->root_schema->object_for_ref($self->original_schema);
+      return $self->root_schema->resolve_path($self->original_schema->ref)->object;
     } else {
       return $self->original_schema;
     }
+  });
+  has object_definition => (is => 'ro', lazy => 1, default => sub {
+    my $self = shift;
+    return $self->root_schema->object_for_ref($self->original_schema);
   });
   # passed in the constructor if the caller knows what type this object is
   # this happens for inlined objects with no names (the caller has to make

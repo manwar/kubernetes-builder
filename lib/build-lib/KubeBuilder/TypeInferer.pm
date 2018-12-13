@@ -59,7 +59,7 @@ package KubeBuilder::TypeInferer;
         if (defined $schema->additionalProperties) {
           # the existence of additionalProperties indicates that it's a "map" object (a HashRef in Perl terms) whose keys are strings, and values of a type described in additionalProperties
           if (defined $schema->additionalProperties->ref) {
-            my $inner = $self->root_schema->object_for_ref($schema->additionalProperties)->fully_namespaced;
+            my $inner = $self->root_schema->resolve_path($schema->additionalProperties->ref)->object;
             return "HashRef[$inner]";
           }
           return 'HashRef[Str]' if ($schema->additionalProperties->type eq 'string');
@@ -101,8 +101,10 @@ package KubeBuilder::TypeInferer;
         }
         return $inner;
       }
-    } elsif ($self->resolved_schema->isa('KubeBuilder::Object')) {
-      return $self->resolved_schema->fully_namespaced;
+    } elsif ($self->isa('KubeBuilder::Object')) {
+      return $self->fully_namespaced;
+    } elsif ($self->isa('KubeBuilder::Property')) {
+      return $self->object_definition->fully_namespaced;
     } else {
       $self->root_schema->log->debug(Dumper({ %$self, root_schema => undef }));
       $self->root_schema->log->debug($self);

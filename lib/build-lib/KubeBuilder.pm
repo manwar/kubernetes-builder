@@ -67,6 +67,8 @@ package KubeBuilder;
       foreach my $def_name (sort keys %$definitions) {
         my $object = $self->schema->definitions->{ $def_name };
 
+        next if (not exists $object->{ properties });
+
         $objects{ $def_name } = 
           KubeBuilder::Object->new(
             original_schema => $object,
