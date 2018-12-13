@@ -22,6 +22,7 @@ package KubeBuilder;
   use Swagger::Schema;
 
   use KubeBuilder::Object;
+  use KubeBuilder::Method;
 
   has schema_file => (
     is => 'ro',
@@ -83,16 +84,53 @@ package KubeBuilder;
     }
   );
 
+  has methods => (
+    is => 'ro',
+    isa => 'HashRef[KubeBuilder::Method]',
+    lazy => 1,
+    traits => [ 'Hash' ],
+    handles => {
+      method_list => 'values',
+    },
+    default => sub {
+      my $self = shift;
+      my %methods => ();
+
+      foreach my $path (sort keys %{ $self->schema->paths }){
+        my $common_parameters = $self->schema->paths->{ $path }->parameters;
+
+        foreach my $method (qw/get post put delete options head patch/) {
+          my $operation = $self->schema->paths->{ $path }->$method;
+          next if (not defined $operation);
+
+          my $method_name = $operation->operationId;
+          $methods{ $method_name } = 
+            KubeBuilder::Method->new(
+              operation => $operation,
+              root_schema => $self,
+              name => $method_name,
+              url => $path,
+              method => $method,
+              (defined $common_parameters) ? (common_parameters => $common_parameters) : (),
+            );
+        }
+      }
+
+      return \%methods;
+    }
+  );
+
+
   sub build {
     my $self = shift;
 
     
-    foreach my $o_name (sort keys %{ $self->objects }){
-      my $object = $self->objects->{ $o_name };
-      $self->log->info("Generating object for definition $o_name");
+    foreach my $m_name (sort keys %{ $self->methods }){
+      my $method = $self->methods->{ $m_name };
+      $self->log->info("Generating method for definition $m_name");
       $self->process_template(
-        'object',
-        { object => $object },
+        'method',
+        { method => $method },
       );
     }
   }
