@@ -50,9 +50,13 @@ package KubeBuilder::TypeInferer;
             $self->root_schema->log->debug(Dumper({ %$self, root_schema => undef }));
             $self->root_schema->log->warn("Find out what Moose native type for $type");
           }
-        } elsif (defined $schema->items->ref) {
-          my $object = $self->root_schema->object_for_ref($schema->items);
-          $inner = $object->fully_namespaced;
+        } elsif (defined $self->original_schema->items->ref) {
+          if ($self->original_schema->items->ref =~ m/v1beta1.JSON/) {
+            $inner = 'Any';
+          } else {
+            my $object = $self->root_schema->object_for_ref($schema->items);
+            $inner = $object->fully_namespaced;
+          }
         }
         return "ArrayRef[$inner]";
       } elsif ($schema->can('type') and $schema->type eq 'object') {
@@ -108,6 +112,10 @@ package KubeBuilder::TypeInferer;
     } elsif ($self->isa('KubeBuilder::Object')) {
       return $self->fully_namespaced;
     } elsif ($self->isa('KubeBuilder::Property')) {
+      # if the resolved schema has no properties...
+      # it's a hackish way of knowing that the object has no attributes assigned to it
+      return 'Any' if (keys %{ $self->resolved_schema } == 0);
+      return 'Any' if ($self->original_schema->ref =~ m/v1beta1.JSON/);
       return $self->object_definition->fully_namespaced;
     } else {
       $self->root_schema->log->debug(Dumper({ %$self, root_schema => undef }));
