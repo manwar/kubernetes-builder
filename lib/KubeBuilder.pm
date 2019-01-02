@@ -19,7 +19,7 @@ package KubeBuilder::Error;
 
 package KubeBuilder;
   use Moose;
-  use Swagger::Schema;
+  use Swagger::Schema::Kubernetes;
 
   use KubeBuilder::Object;
   use KubeBuilder::Method;
@@ -32,14 +32,14 @@ package KubeBuilder;
 
   has schema => (
     is => 'ro', 
-    isa => 'Swagger::Schema', 
+    isa => 'Swagger::Schema::Kubernetes',
     lazy => 1,
     default => sub {
       my $self = shift;
       my $data = file($self->schema_file)->slurp;
       KubeBuilder::Error->throw("Couldn't read file " . $self->schema_file) if (not defined $data);
       $data =~ s/^\xEF\xBB\xBF//;
-      return Swagger::Schema->MooseX::DataModel::new_from_json($data);
+      return Swagger::Schema::Kubernetes->MooseX::DataModel::new_from_json($data);
     }
   );
 
