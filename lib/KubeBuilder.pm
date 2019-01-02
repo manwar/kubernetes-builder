@@ -20,6 +20,8 @@ package KubeBuilder::Error;
 package KubeBuilder;
   use Moose;
   use Swagger::Schema::Kubernetes;
+  our $VERSION = '0.01';
+  #ABSTRACT: Module to help build the Perl Kubernetes client
 
   use KubeBuilder::Object;
   use KubeBuilder::Method;
