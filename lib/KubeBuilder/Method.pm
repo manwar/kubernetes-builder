@@ -38,17 +38,65 @@ package KubeBuilder::Method;
   has url => (is => 'ro', isa => 'Str', required => 1);
   has method => (is => 'ro', isa => 'Str', required => 1);
 
+  # Some methods are not versioned with v1, v1alpha1, etc
+  has is_versionedcall => (is => 'ro', isa => 'Bool', lazy => 1, default => sub {
+    my $self = shift;
+    my $operation_tag = $self->operation->tags->[0];
+    die "No tag for " . $self->name if (not defined $operation_tag);
+    my ($group, $version_namespace) = split /_/, $operation_tag, 2;
+
+    return 0 if (not defined $version_namespace);
+    return 1;
+  });
+
   has call_classname => (is => 'ro', isa => 'Str', lazy => 1, default => sub {
     my $self = shift;
     my $mname = $self->operation->operationId;
     substr($mname, 0, 1) = uc(substr($mname, 0, 1));
+
+    if ($self->is_versionedcall) {
+      # strip off the API version and the API group from the name of the method
+      my $version = $self->version_namespace;
+      $mname =~ s/$version//i;
+      my $group = $self->group;
+      $mname =~ s/$group//i;
+    }
+
     return $mname;
   });
 
-  has call_namespace => (is => 'ro', isa => 'Str', default => 'Kubernetes::REST::Call::');
+  has call_namespace => (is => 'ro', isa => 'Str', default => 'Kubernetes::REST::Call');
+
+  has group => (is => 'ro', isa => 'Str|Undef', lazy => 1, default => sub {
+    my $self = shift;
+    my $operation_tag = $self->operation->tags->[0];
+    die "No tag for " . $self->name if (not defined $operation_tag);
+    my ($group, $version_namespace) = split /_/, $operation_tag, 2;
+    
+    substr($group, 0, 1) = uc(substr($group, 0, 1));
+    return $group;
+  });
+
+  has version_namespace => (is => 'ro', isa => 'Str|Undef', lazy => 1, default => sub {
+    my $self = shift;
+    my $operation_tag = $self->operation->tags->[0];
+    die "No tag for " . $self->name if (not defined $operation_tag);
+    my ($group, $version_namespace) = split /_/, $operation_tag, 2;
+
+    return undef if (not defined $version_namespace);
+
+    #substr($version_namespace, 0, 1) = uc(substr($version_namespace, 0, 1));
+    return $version_namespace;
+  });
+
   has fullyqualified_methodname => (is => 'ro', isa => 'Str', lazy => 1, default => sub {
     my $self = shift;
-    $self->call_namespace . $self->call_classname;
+
+    if (not $self->is_versionedcall) {
+      return join '::', $self->call_namespace, $self->call_classname;
+    } else {
+      return join '::', $self->call_namespace, $self->version_namespace, $self->group, $self->call_classname;
+    }
   });
 
   sub swagger_to_perltype {

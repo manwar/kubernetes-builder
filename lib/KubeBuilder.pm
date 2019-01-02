@@ -20,11 +20,12 @@ package KubeBuilder::Error;
 package KubeBuilder;
   use Moose;
   use Swagger::Schema::Kubernetes;
-  our $VERSION = '0.01';
+  our $VERSION = '0.02';
   #ABSTRACT: Module to help build the Perl Kubernetes client
 
   use KubeBuilder::Object;
   use KubeBuilder::Method;
+  use KubeBuilder::Group;
 
   has schema_file => (
     is => 'ro',
@@ -85,6 +86,22 @@ package KubeBuilder;
       return \%objects;
     }
   );
+
+  has method_groups => (is => 'ro', isa => 'HashRef[KubeBuilder::Group]', lazy => 1, default => sub {
+    my $self = shift;
+    my %groups = ();
+    foreach my $m (@{ $self->method_list }) {
+      my $group_name = $m->group;
+      $groups{ $group_name } = KubeBuilder::Group->new(methods => [], name => $group_name) if (not defined $groups{ $group_name });
+      push @{ $groups{ $group_name }->methods }, $m;
+    }
+    return \%groups;
+  });
+
+  has method_groups_list => (is => 'ro', isa => 'ArrayRef[KubeBuilder::Group]', lazy => 1, default => sub {
+    my $self = shift;
+    [ map { $self->method_groups->{ $_ } } sort keys %{ $self->method_groups } ];
+  });
 
   has method_list => (is => 'ro', isa => 'ArrayRef[KubeBuilder::Method]', lazy => 1, default => sub {
     my $self = shift;
