@@ -18,6 +18,13 @@ package KubeBuilder::Error;
   extends 'Throwable::Error';
 
 package KubeBuilder;
+
+=head1 NAME
+
+KubeBuilder - Module to help build the Perl Kubernetes client
+
+=cut
+
   use Moose;
   use Swagger::Schema::Kubernetes;
   our $VERSION = '0.02';
